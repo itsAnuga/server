@@ -1,0 +1,14 @@
+{
+  "description": "WebSockeServer",
+  "homepage": "https://github.com/itsanuga/websocketserver",
+  "license": "CC-0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/itsanuga/websocketserver.git"
+  },
+  "scripts": {},
+  "version": "0.0.0",
+  "dependencies": {
+    "ws": "^8.2.2"
+  }
+}
