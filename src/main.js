@@ -1,27 +1,34 @@
 // import axios from 'axios';
+// import Player from '../classes/Player.js';
 import { v4 as uuid } from 'uuid';
-import { WebSocketServer } from 'ws';
+import WebSocket, { WebSocketServer } from 'ws';
 import Words from '../classes/Words.js';
 
-const sessions = {};
+const Messages = [];
+const Rooms = {
+  Lobby: [],
+};
+const Players = {};
+const Sessions = {};
 const wss = new WebSocketServer({ port: 1337 });
+
+/*
+ * Add Welcome message.
+ * Add Phrase: Who wants to go first?
+ * While player is typing message.
+ * Ignore messages from player whos turn it is not.
+ * If message is correct, turn green.
+ * If message is wrong, turn red.
+ */
 
 function heartbeat() {
   this.isAlive = true;
 }
 
-wss.on('close', () => {
+wss.on('connection', (ws, req) => {
   let DateTime = new Date().toString();
 
-  ws.send(DateTime + ' Disconnected');
-
-  clearInterval(interval);
-
-  console.log(`Client connected!`);
-});
-
-wss.on('connection', (ws, req) => {
-  console.info(req.headers);
+  // console.info(req.headers);
 
   ws.isAlive = true;
   ws.messages = {
@@ -30,31 +37,67 @@ wss.on('connection', (ws, req) => {
   };
   ws.uuid = uuid();
 
-  ws.on('pong', heartbeat);
-
-  let DateTime = new Date().toString();
-
-  ws.on('message', (message) => {
+  ws.on('close', () => {
     let DateTime = new Date().toString();
 
-    ws.messages.current = JSON.parse(`${message}`);
+    ws.send(DateTime + ' Disconnected');
 
-    console.log(DateTime);
-    console.log(ws.messages.current.message);
-    // console.log(`Received: ${message}.`);
-    // console.log(`Comparing: ${JSON.stringify(ws.messages)}`);
+    clearInterval(interval);
 
-    let word = new Words(ws.messages.current.message, ws.messages.previous);
+    console.log(`Client disconnected!`);
+  });
 
+  /*
+   * Move to function for reusability.
+   */
+  ws.on('message', (data) => {
+    Messages.push(JSON.parse(`${data}`).message);
+
+    /*
+     * Globally broadcast message.
+     * Turn into a function or class for reuseablity.
+     */
+    wss.clients.forEach((client) => {
+      if (client !== ws && client.readyState === WebSocket.OPEN) {
+        client.send(JSON.parse(data).message);
+      }
+    });
+  });
+
+  ws.on('message', (data) => {
+    let DateTime = new Date().toString();
+
+    ws.messages.current = JSON.parse(`${data}`).message;
+
+    console.log(ws.messages);
+    let word = new Words(ws.messages.current, ws.messages.previous);
     console.log(word.valid);
 
-    ws.send(DateTime + ' Returning: ' + message);
+    if (ws.messages.previous !== '' && !word.valid) {
+      /*
+       * Globally broadcast message.
+       * Turn into a function or class.
+       */
+      wss.clients.forEach((client) => {
+        if (client !== ws && client.readyState === WebSocket.OPEN) {
+          client.send(JSON.parse(data).message);
+        }
+      });
+    }
 
-    ws.messages.previous = ws.messages.current.message;
+    ws.send(DateTime + ' Returning: ' + ws.messages.current);
+
+    ws.messages.previous = ws.messages.current;
   });
+
+  ws.on('pong', heartbeat);
 
   ws.send(DateTime + ' Connected');
   ws.send(JSON.stringify({ user: ws.uuid }));
+
+  if (Messages.length > 0) {
+    ws.send(JSON.stringify(Messages));
+  }
 
   console.log(`Client connected!`);
 });
@@ -68,4 +111,8 @@ const interval = setInterval(() => {
     ws.isAlive = false;
     ws.ping();
   });
+}, 1000);
+
+setInterval(() => {
+  console.log(Messages);
 }, 1000);
