@@ -1,16 +1,30 @@
 // import axios from 'axios';
-// import Player from '../classes/Player.js';
+
+import ClassPlayers from '../classes/Players.js';
+import Messages from '../classes/Message.js';
 import { v4 as uuid } from 'uuid';
 import WebSocket, { WebSocketServer } from 'ws';
 import Words from '../classes/Words.js';
 
-const Messages = [];
+const Message = new Messages();
+// const Messages = [];
 const Rooms = {
   Lobby: [],
 };
-const Players = {};
 const Sessions = {};
 const wss = new WebSocketServer({ port: 1337 });
+
+// const broadcast = wss.on('message', (data) => {
+//   Messages.push(JSON.parse(`${data}`).message);
+
+//   wss.clients.forEach((client) => {
+//     if (client !== ws && client.readyState === WebSocket.OPEN) {
+//       client.send(JSON.parse(data).message);
+//     }
+//   });
+// });
+
+const Players = new ClassPlayers();
 
 /*
  * Add Welcome message.
@@ -30,6 +44,7 @@ wss.on('connection', (ws, req) => {
 
   // console.info(req.headers);
 
+  ws.connected = DateTime;
   ws.isAlive = true;
   ws.messages = {
     current: '',
@@ -37,74 +52,104 @@ wss.on('connection', (ws, req) => {
   };
   ws.uuid = uuid();
 
+  ws.player = Players.add(ws.uuid);
+
   ws.on('close', () => {
     let DateTime = new Date().toString();
 
-    ws.send(DateTime + ' Disconnected');
-
     clearInterval(interval);
 
-    console.log(`Client disconnected!`);
+    Players.remove(ws.uuid);
+
+    console.log(DateTime, ws.uuid, `Disconnected`);
   });
 
   /*
    * Move to function for reusability.
+   * Globally broadcast message.
+   * Turn into a function or class for reuseablity.
    */
-  ws.on('message', (data) => {
-    Messages.push(JSON.parse(`${data}`).message);
+  ws.on('message', (message) => {
+    console.info(`${message}`);
+    // console.info(JSON.parse(`${message}`));
 
-    /*
-     * Globally broadcast message.
-     * Turn into a function or class for reuseablity.
-     */
-    wss.clients.forEach((client) => {
-      if (client !== ws && client.readyState === WebSocket.OPEN) {
-        client.send(JSON.parse(data).message);
-      }
-    });
-  });
+    Message.message(JSON.parse(`${message}`));
 
-  ws.on('message', (data) => {
-    let DateTime = new Date().toString();
-
-    ws.messages.current = JSON.parse(`${data}`).message;
-
-    console.log(ws.messages);
-    let word = new Words(ws.messages.current, ws.messages.previous);
-    console.log(word.valid);
-
-    if (ws.messages.previous !== '' && !word.valid) {
-      /*
-       * Globally broadcast message.
-       * Turn into a function or class.
-       */
-      wss.clients.forEach((client) => {
-        if (client !== ws && client.readyState === WebSocket.OPEN) {
-          client.send(JSON.parse(data).message);
-        }
-      });
+    if (Message.type === `forfeit`) {
+      Players.remove(ws.uuid);
+      ws.close();
     }
 
-    ws.send(DateTime + ' Returning: ' + ws.messages.current);
+    if (Message.type === `uuid`) {
+      Players.replace(ws.uuid, Message.data);
+      ws.uuid = Message.data;
+    }
 
-    ws.messages.previous = ws.messages.current;
+    if (Message.type === `word`) {
+      // const word = new Words(ws.messages.current, ws.messages.previous);
+    }
+
+    // Messages.push(JSON.parse(`${message}`).message);
+    // wss.clients.forEach((client) => {
+    //   if (client !== ws && client.readyState === WebSocket.OPEN) {
+    //     client.send(JSON.parse(message).message);
+    //   }
+    // });
   });
 
-  ws.on('pong', heartbeat);
+  // ws.on('message', (data) => {
+  //   let DateTime = new Date().toString();
 
-  ws.send(DateTime + ' Connected');
-  ws.send(JSON.stringify({ user: ws.uuid }));
+  //   ws.messages.current = JSON.parse(`${data}`).message;
+
+  //   console.log(ws.messages);
+  //   let word = new Words(ws.messages.current, ws.messages.previous);
+  //   console.log(word.valid);
+
+  //   if (ws.messages.previous !== '' && !word.valid) {
+  //     /*
+  //      * Globally broadcast message.
+  //      * Turn into a function or class.
+  //      */
+  //     wss.clients.forEach((client) => {
+  //       if (client !== ws && client.readyState === WebSocket.OPEN) {
+  //         client.send(JSON.parse(data).message);
+  //       }
+  //     });
+  //   }
+
+  // ws.send(DateTime + ' Returning: ' + ws.messages.current);
+
+  //   ws.messages.previous = ws.messages.current;
+  // });
+
+  // ws.on('pong', heartbeat);
+
+  ws.send(
+    JSON.stringify({
+      data: {
+        connected: ws.connected,
+        player: ws.player,
+        uuid: ws.uuid,
+      },
+      type: 'UserInfo',
+    }),
+  );
 
   if (Messages.length > 0) {
     ws.send(JSON.stringify(Messages));
   }
 
-  console.log(`Client connected!`);
+  console.info(`${DateTime} Client connected.`);
 });
 
 const interval = setInterval(() => {
   wss.clients.forEach((ws) => {
+    // console.info(`Checking ${ws.player} connection.`);
+
     if (ws.isAlive === false) {
+      Players.remove(ws.uuid);
+
       return ws.terminate();
     }
 
@@ -114,5 +159,28 @@ const interval = setInterval(() => {
 }, 1000);
 
 setInterval(() => {
-  console.log(Messages);
-}, 1000);
+  wss.clients.forEach((ws) => {
+    ws.send(
+      JSON.stringify({
+        data: Players.list,
+        type: 'PlayerList',
+      }),
+    );
+  });
+}, 2000);
+
+setInterval(() => {
+  wss.clients.forEach((ws) => {
+    ws.ping();
+  });
+}, 30000);
+
+// setInterval(() => {
+//   if (Messages.length > 0) {
+//     console.info(Messages);
+//   }
+// }, 1000);
+
+setInterval(() => {
+  console.clear();
+}, 60000);
