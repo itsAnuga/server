@@ -1,18 +1,19 @@
 // import axios from 'axios';
 
 import ClassPlayers from '../classes/Players.js';
-import Messages from '../classes/Message.js';
+import ClassMessages from '../classes/Message.js';
 import { v4 as uuid } from 'uuid';
 import WebSocket, { WebSocketServer } from 'ws';
 import Words from '../classes/Words.js';
 
-const Message = new Messages();
+const Message = new ClassMessages();
 // const Messages = [];
+const Players = new ClassPlayers();
 const Rooms = {
   Lobby: [],
 };
 const Sessions = {};
-const wss = new WebSocketServer({ port: 1337 });
+const wss = new WebSocketServer({ port: process.env.PORT });
 
 // const broadcast = wss.on('message', (data) => {
 //   Messages.push(JSON.parse(`${data}`).message);
@@ -23,8 +24,6 @@ const wss = new WebSocketServer({ port: 1337 });
 //     }
 //   });
 // });
-
-const Players = new ClassPlayers();
 
 /*
  * Add Welcome message.
@@ -40,11 +39,11 @@ function heartbeat() {
 }
 
 wss.on('connection', (ws, req) => {
-  let DateTime = new Date().toString();
+  const DateTime = new Date();
 
   // console.info(req.headers);
 
-  ws.connected = DateTime;
+  ws.connected = DateTime.toUTCString();
   ws.isAlive = true;
   ws.messages = {
     current: '',
@@ -61,7 +60,7 @@ wss.on('connection', (ws, req) => {
 
     Players.remove(ws.uuid);
 
-    console.log(DateTime, ws.uuid, `Disconnected`);
+    console.info(DateTime, ws.uuid, `Disconnected`);
   });
 
   /*
@@ -71,7 +70,6 @@ wss.on('connection', (ws, req) => {
    */
   ws.on('message', (message) => {
     console.info(`${message}`);
-    // console.info(JSON.parse(`${message}`));
 
     Message.message(JSON.parse(`${message}`));
 
@@ -136,16 +134,16 @@ wss.on('connection', (ws, req) => {
     }),
   );
 
-  if (Messages.length > 0) {
-    ws.send(JSON.stringify(Messages));
-  }
+  // if (Messages.all.length > 0) {
+  //   ws.send(JSON.stringify(Messages));
+  // }
 
-  console.info(`${DateTime} Client connected.`);
+  console.info(`${DateTime.toUTCString()} Client connected.`);
 });
 
 const interval = setInterval(() => {
   wss.clients.forEach((ws) => {
-    // console.info(`Checking ${ws.player} connection.`);
+    console.info(`Checking ${ws.player} connection.`);
 
     if (ws.isAlive === false) {
       Players.remove(ws.uuid);
@@ -169,11 +167,11 @@ setInterval(() => {
   });
 }, 2000);
 
-setInterval(() => {
-  wss.clients.forEach((ws) => {
-    ws.ping();
-  });
-}, 30000);
+// setInterval(() => {
+//   wss.clients.forEach((ws) => {
+//     ws.ping();
+//   });
+// }, 30000);
 
 // setInterval(() => {
 //   if (Messages.length > 0) {
@@ -181,6 +179,6 @@ setInterval(() => {
 //   }
 // }, 1000);
 
-setInterval(() => {
-  console.clear();
-}, 60000);
+// setInterval(() => {
+//   console.clear();
+// }, 60000);
