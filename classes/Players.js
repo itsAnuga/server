@@ -1,6 +1,6 @@
 class Players {
   /**
-   * @var players Player list
+   * @var {array} players Player list
    */
   players = [];
 
@@ -12,7 +12,7 @@ class Players {
   /**
    * Get and return Player list
    *
-   * @return array Player list
+   * @return {array} Player list
    */
   get list() {
     return this.players.filter((player) => player !== undefined);
@@ -22,9 +22,9 @@ class Players {
    * Add a player alias.
    * Create additional rules and run them here if needed.
    *
-   * @param UUID Players UUID
+   * @param {string} UUID Players UUID
    *
-   * @return var Player name
+   * @return {string}
    */
   add(uuid) {
     return this.CreatePlayer(uuid);
@@ -33,9 +33,11 @@ class Players {
   /**
    * Create a player, based on UUID.
    *
+   * Return generated player name.
+   *
    * @param uuid Players UUID.
    *
-   * @return var Player name
+   * @return {string}
    */
   CreatePlayer(uuid) {
     for (let index = 0; index <= this.players.length; index++) {
@@ -57,9 +59,9 @@ class Players {
    * Remove a player alias.
    * Create additional rules and run them here if needed.
    *
-   * @param uuid Players UUID
+   * @param {string} uuid Players UUID
    *
-   * @return bool
+   * @return {bool}
    */
   remove(uuid) {
     this.RemovePlayer(uuid);
@@ -70,10 +72,10 @@ class Players {
   /**
    * Replace generated players UUID with Cookie UUID.
    *
-   * @param current     UUID Generated on Connection
-   * @param replacement UUID from Cookie
+   * @param {string} current     UUID Generated on Connection
+   * @param {string} replacement UUID from Cookie
    *
-   * @return bool
+   * @return {bool}
    */
   replace(current, replacement) {
     for (let index = 0; index < this.players.length; index++) {
@@ -91,9 +93,9 @@ class Players {
   /**
    * Remove a player, based on UUID.
    *
-   * @param uuid Players UUID
+   * @param {string} uuid Players UUID
    *
-   * @return bool
+   * @return {bool}
    */
   RemovePlayer(uuid) {
     for (let index = 0; index <= this.players.length; index++) {

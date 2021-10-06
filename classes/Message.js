@@ -1,12 +1,49 @@
 class Message {
+  /**
+   * @var {string} data Message data
+   */
+  data = [];
+
+  /**
+   * @var {string} messages Messages/Words
+   */
   messages = [];
 
+  /**
+   * @var {string} type Message type
+   */
+  type = null;
+
+  /**
+   * Class Constructor
+   */
   constructor() {}
 
+  /**
+   * Get all messages.
+   *
+   * @return {array}
+   */
+  get all() {
+    return this.messages;
+  }
+
+  /**
+   * Get the latest message.
+   *
+   * @return {string}
+   */
   get current() {
     return this.messages[this.messages.length() - 1];
   }
 
+  /**
+   * Check incoming message.
+   * (Not used at the moment, but might come in handy)
+   *
+   * @param {object} message
+   *
+   */
   message(message) {
     this.data = message.data;
     this.type = message.type;
