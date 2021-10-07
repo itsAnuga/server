@@ -1,18 +1,11 @@
-// import axios from 'axios';
-
 import ClassPlayers from '../classes/Players.js';
 import ClassMessages from '../classes/Message.js';
 import { v4 as uuid } from 'uuid';
-import WebSocket, { WebSocketServer } from 'ws';
+import { WebSocketServer } from 'ws';
 import Words from '../classes/Words.js';
 
 const Message = new ClassMessages();
-// const Messages = [];
 const Players = new ClassPlayers();
-const Rooms = {
-  Lobby: [],
-};
-const Sessions = {};
 const wss = new WebSocketServer({ port: process.env.PORT });
 
 // const broadcast = wss.on('message', (data) => {
@@ -25,23 +18,12 @@ const wss = new WebSocketServer({ port: process.env.PORT });
 //   });
 // });
 
-/*
- * Add Welcome message.
- * Add Phrase: Who wants to go first?
- * While player is typing message.
- * Ignore messages from player whos turn it is not.
- * If message is correct, turn green.
- * If message is wrong, turn red.
- */
-
 function heartbeat() {
   this.isAlive = true;
 }
 
 wss.on('connection', (ws, req) => {
   const DateTime = new Date();
-
-  // console.info(req.headers);
 
   ws.connected = DateTime.toUTCString();
   ws.isAlive = true;
