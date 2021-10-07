@@ -1,20 +1,20 @@
 {
   "description": "WebSockeServer",
-  "homepage": "https://github.com/itsanuga/websocketserver",
+  "homepage": "https://github.com/itsanuga/server",
   "license": "CC-0",
-  "main": "app.js",
+  "main": "src/main.js",
   "repository": {
     "type": "git",
-    "url": "https://github.com/itsanuga/websocketserver.git"
+    "url": "https://github.com/itsanuga/server.git"
   },
   "scripts": {
-    "start": "node src/main.js"
+    "start": "node -r dotenv/config src/main.js"
   },
   "type": "module",
   "dependencies": {
-    "axios": "^0.21.4",
+    "dotenv": "^10.0.0",
     "uuid": "^8.3.2",
-    "ws": "^8.2.2"
+    "ws": "^8.2.3"
   },
   "devDependencies": {
     "prettier": "^2.4.1"
