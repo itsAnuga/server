@@ -34,7 +34,11 @@ class Message {
    * @return {string}
    */
   get current() {
-    return this.messages[this.messages.length() - 1];
+    if (this.messages.length > 0) {
+      return this.messages[this.messages.length - 1].message;
+    }
+
+    return ``;
   }
 
   /**
