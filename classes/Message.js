@@ -48,14 +48,14 @@ class Message {
     this.data = message.data;
     this.type = message.type;
 
-    switch (this.type) {
-      case `handshake`:
-        // return { data: uuid() };
-        break;
-      case `uuid`:
-        // console.info(`Message:`, message.data);
-        break;
-    }
+    // switch (this.type) {
+    //   case `handshake`:
+    //     break;
+    //   case `uuid`:
+    //     break;
+    //   case `word`:
+    //     break;
+    // }
   }
 }
 
