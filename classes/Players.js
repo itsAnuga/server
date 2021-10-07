@@ -5,6 +5,11 @@ class Players {
   players = [];
 
   /**
+   * @var {array} observers Observer list
+   */
+  observers = [];
+
+  /**
    * Class Constructor
    */
   constructor() {}
