@@ -8,16 +8,6 @@ const Message = new ClassMessages();
 const Players = new ClassPlayers();
 const wss = new WebSocketServer({ port: process.env.PORT });
 
-// const broadcast = wss.on('message', (data) => {
-//   Messages.push(JSON.parse(`${data}`).message);
-
-//   wss.clients.forEach((client) => {
-//     if (client !== ws && client.readyState === WebSocket.OPEN) {
-//       client.send(JSON.parse(data).message);
-//     }
-//   });
-// });
-
 function heartbeat() {
   this.isAlive = true;
 }
