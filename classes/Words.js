@@ -27,9 +27,8 @@ class Words {
    * @return {bool}
    */
   get valid() {
+    // Simulate API Request to Cambridge Word API.
     setTimeout(() => {}, 3333);
-
-    console.info(`Words are "valid" english words.`);
 
     return this.previous.endsWith(this.incoming.charAt(0));
   }
