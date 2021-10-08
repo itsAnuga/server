@@ -44,33 +44,66 @@ wss.on('connection', (ws, req) => {
     if (Message.type === `uuid`) {
       Players.replace(ws.uuid, Message.data);
       ws.uuid = Message.data;
+
+      // if (Message.all.length !== 0) {
+      //   Players.observer(ws.uuid);
+      // }
     }
 
     /**
      * If the message is a word from the game.
      */
     if (Message.type === `word`) {
-      if (Message.all.length === 0) {
-        Message.messages.push({ message: Message.data, player: ws.player });
+      let message = null;
+      let state = true;
+
+      if (Message.all.length !== 0) {
+        const word = new Words(Message.data, Message.current);
+
+        /**
+         * Validate word.
+         */
+        if (word.valid) {
+          message = JSON.stringify({
+            data: { message: Message.data, player: ws.player },
+            type: `Word`,
+          });
+
+          Message.messages.push({ message: Message.data, player: ws.player });
+        } else {
+          message = JSON.stringify({
+            data: { message: `${ws.player} is out of the game :(` },
+            type: `Loser`,
+          });
+          state = false;
+        }
       } else {
-        // const word = new Words(Message.current, Message.data);
+        message = JSON.stringify({
+          data: { message: Message.data, player: ws.player },
+          type: `Word`,
+        });
+
+        Message.messages.push({ message: Message.data, player: ws.player });
       }
 
-      /**
-       * Validate word.
-       */
-      // if (word.valid) {
       wss.clients.forEach((client) => {
         if (client !== ws && client.readyState === WebSocket.OPEN) {
-          client.send(
-            JSON.stringify({
-              data: { message: Message.data, player: ws.player },
-              type: `Word`,
-            }),
-          );
+          client.send(message);
         }
       });
-      // }
+
+      if (!state) {
+        Players.remove(ws.uuid);
+
+        ws.send(
+          JSON.stringify({
+            data: { message: `Sorry, that wasn't valid. Your out!` },
+            type: `Lost`,
+          }),
+        );
+
+        ws.terminate();
+      }
     }
   });
 
