@@ -8,47 +8,87 @@ const Message = new ClassMessages();
 const Players = new ClassPlayers();
 const wss = new WebSocketServer({ port: process.env.PORT });
 
+function heartbeat() {
+  this.isAlive = true;
+}
+
+wss.on('close', () => {
+  clearInterval(interval);
+});
+
 wss.on('connection', (ws, req) => {
   const DateTime = new Date();
 
+  console.info(`${DateTime.toUTCString()} Client connected.`);
+
   ws.connected = DateTime.toUTCString();
   ws.isAlive = true;
-  ws.uuid = uuid();
+  ws.myTurn = false;
 
-  ws.player = Players.add(ws.uuid);
-
+  /**
+   * Client disconnected.
+   */
   ws.on('close', () => {
-    let DateTime = new Date();
-
-    // clearInterval(interval);
-
     Players.remove(ws.uuid);
 
-    console.info(`${DateTime.toUTCString()} Client disconnected`);
+    // let DateTime = new Date();
+    // console.info(`${DateTime.toUTCString()} Client disconnected`);
   });
 
+  /**
+   * Parse incoming messages/commands.
+   */
   ws.on('message', (message) => {
-    console.info(`${message}`);
+    console.info(`${message}`); // Log incoming message to system.
 
-    Message.message(JSON.parse(`${message}`));
+    Message.message(JSON.parse(`${message}`)); // Parse message to JSON.
 
+    /**
+     * When a client gives up willingly.
+     */
     if (Message.type === `forfeit`) {
       Players.remove(ws.uuid);
       ws.terminate();
+      wss.clients.forEach((client) => {
+        if (client !== ws && client.readyState === WebSocket.OPEN) {
+          client.send({ data: { message: `${ws.player} forfeited.` } });
+        }
+      });
+    }
+
+    /**
+     * Register new client or returning client.
+     */
+    if (Message.type === `register`) {
+      ws.uuid = Message.data.uuid !== null ? Message.data.uuid : uuid();
+      ws.player = Players.add(ws.uuid);
+
+      /**
+       * Send generated UserInformation to client.
+       */
+      ws.send(
+        JSON.stringify({
+          data: {
+            connected: ws.connected,
+            player: ws.player,
+            uuid: ws.uuid,
+          },
+          type: 'UserInfo',
+        }),
+      );
     }
 
     /**
      * Returning client.
      * Set clients UUID.
      */
-    if (Message.type === `uuid`) {
-      Players.replace(ws.uuid, Message.data);
-      ws.uuid = Message.data;
-
-      // if (Message.all.length !== 0) {
-      //   Players.observer(ws.uuid);
-      // }
-    }
+    // if (Message.type === `uuid`) {
+    //   Players.replace(ws.uuid, Message.data);
+    //   ws.uuid = Message.data;
+    //   // if (Message.all.length !== 0) {
+    //   //   Players.observer(ws.uuid);
+    //   // }
+    // }
 
     /**
      * If the message is a word from the game.
@@ -57,6 +97,9 @@ wss.on('connection', (ws, req) => {
       let message = null;
       let state = true;
 
+      /**
+       * If it's not the first word in the current session.
+       */
       if (Message.all.length !== 0) {
         const word = new Words(Message.data, Message.current);
 
@@ -64,6 +107,7 @@ wss.on('connection', (ws, req) => {
          * Validate word.
          */
         if (word.valid) {
+          // Word is valid.
           message = JSON.stringify({
             data: { message: Message.data, player: ws.player },
             type: `Word`,
@@ -71,13 +115,16 @@ wss.on('connection', (ws, req) => {
 
           Message.messages.push({ message: Message.data, player: ws.player });
         } else {
+          // Word is invalid.
           message = JSON.stringify({
             data: { message: `${ws.player} is out of the game :(` },
             type: `Loser`,
           });
+
           state = false;
         }
       } else {
+        // It's the first word in the session.
         message = JSON.stringify({
           data: { message: Message.data, player: ws.player },
           type: `Word`,
@@ -86,12 +133,18 @@ wss.on('connection', (ws, req) => {
         Message.messages.push({ message: Message.data, player: ws.player });
       }
 
+      /**
+       * Broadcast the result to all clients, except the client who send the word.
+       */
       wss.clients.forEach((client) => {
         if (client !== ws && client.readyState === WebSocket.OPEN) {
           client.send(message);
         }
       });
 
+      /**
+       * If it wasn't a valid word or match to previous word.
+       */
       if (!state) {
         Players.remove(ws.uuid);
 
@@ -108,29 +161,17 @@ wss.on('connection', (ws, req) => {
   });
 
   /**
-   * Send generated UserInformation to client.
+   * What to do on pong.
    */
-  ws.send(
-    JSON.stringify({
-      data: {
-        connected: ws.connected,
-        player: ws.player,
-        uuid: ws.uuid,
-      },
-      type: 'UserInfo',
-    }),
-  );
+  ws.on('pong', heartbeat);
 
   if (Message.all.length > 0) {
     ws.send(JSON.stringify(Message.all));
   }
-
-  console.info(`${DateTime.toUTCString()} Client connected.`);
 });
 
 // const interval = setInterval(() => {
 //   wss.clients.forEach((ws) => {
-//     console.info(`Checking ${ws.player} connection.`);
 //     if (ws.isAlive === false) {
 //       Players.remove(ws.uuid);
 //       return ws.terminate();
@@ -138,8 +179,11 @@ wss.on('connection', (ws, req) => {
 //     ws.isAlive = false;
 //     ws.ping();
 //   });
-// }, 1000);
+// }, 30000);
 
+/**
+ * Broadcast Playerlist every 2000 milliseconds.
+ */
 setInterval(() => {
   wss.clients.forEach((ws) => {
     ws.send(
@@ -152,16 +196,10 @@ setInterval(() => {
 }, 2000);
 
 // setInterval(() => {
-//   wss.clients.forEach((ws) => {
-//     ws.ping();
+//   wss.clients.forEach((client) => {
+//     client.ping();
 //   });
 // }, 30000);
-
-// setInterval(() => {
-//   if (Messages.length > 0) {
-//     console.info(Messages);
-//   }
-// }, 1000);
 
 // setInterval(() => {
 //   console.clear();
