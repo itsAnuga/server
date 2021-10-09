@@ -8,23 +8,33 @@ const Message = new ClassMessages();
 const Players = new ClassPlayers();
 const wss = new WebSocketServer({ port: process.env.PORT });
 
+function heartbeat() {
+  this.isAlive = true;
+}
+
+wss.on('close', () => {
+  clearInterval(interval);
+});
+
 wss.on('connection', (ws, req) => {
   const DateTime = new Date();
 
+  console.info(`${DateTime.toUTCString()} Client connected.`);
+
   ws.connected = DateTime.toUTCString();
   ws.isAlive = true;
-  ws.uuid = uuid();
+  ws.myTurn = false;
+  // ws.uuid = uuid();
+  // ws.player = Players.add(ws.uuid);
 
-  ws.player = Players.add(ws.uuid);
-
+  /**
+   * Client disconnected.
+   */
   ws.on('close', () => {
-    let DateTime = new Date();
-
-    // clearInterval(interval);
-
     Players.remove(ws.uuid);
 
-    console.info(`${DateTime.toUTCString()} Client disconnected`);
+    // let DateTime = new Date();
+    // console.info(`${DateTime.toUTCString()} Client disconnected`);
   });
 
   ws.on('message', (message) => {
@@ -35,6 +45,30 @@ wss.on('connection', (ws, req) => {
     if (Message.type === `forfeit`) {
       Players.remove(ws.uuid);
       ws.terminate();
+      wss.clients.forEach((client) => {
+        if (client !== ws && client.readyState === WebSocket.OPEN) {
+          client.send({ data: { message: `${ws.player} forfeited.` } });
+        }
+      });
+    }
+
+    if (Message.type === `register`) {
+      ws.uuid = Message.data.uuid !== null ? Message.data.uuid : uuid();
+      ws.player = Players.add(ws.uuid);
+
+      /**
+       * Send generated UserInformation to client.
+       */
+      ws.send(
+        JSON.stringify({
+          data: {
+            connected: ws.connected,
+            player: ws.player,
+            uuid: ws.uuid,
+          },
+          type: 'UserInfo',
+        }),
+      );
     }
 
     /**
@@ -108,29 +142,17 @@ wss.on('connection', (ws, req) => {
   });
 
   /**
-   * Send generated UserInformation to client.
+   * What to do on pong.
    */
-  ws.send(
-    JSON.stringify({
-      data: {
-        connected: ws.connected,
-        player: ws.player,
-        uuid: ws.uuid,
-      },
-      type: 'UserInfo',
-    }),
-  );
+  ws.on('pong', heartbeat);
 
   if (Message.all.length > 0) {
     ws.send(JSON.stringify(Message.all));
   }
-
-  console.info(`${DateTime.toUTCString()} Client connected.`);
 });
 
 // const interval = setInterval(() => {
 //   wss.clients.forEach((ws) => {
-//     console.info(`Checking ${ws.player} connection.`);
 //     if (ws.isAlive === false) {
 //       Players.remove(ws.uuid);
 //       return ws.terminate();
@@ -138,8 +160,11 @@ wss.on('connection', (ws, req) => {
 //     ws.isAlive = false;
 //     ws.ping();
 //   });
-// }, 1000);
+// }, 30000);
 
+/**
+ * Broadcast Playerlist every 2000 milliseconds.
+ */
 setInterval(() => {
   wss.clients.forEach((ws) => {
     ws.send(
@@ -152,16 +177,10 @@ setInterval(() => {
 }, 2000);
 
 // setInterval(() => {
-//   wss.clients.forEach((ws) => {
-//     ws.ping();
+//   wss.clients.forEach((client) => {
+//     client.ping();
 //   });
 // }, 30000);
-
-// setInterval(() => {
-//   if (Messages.length > 0) {
-//     console.info(Messages);
-//   }
-// }, 1000);
 
 // setInterval(() => {
 //   console.clear();
