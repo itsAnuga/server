@@ -38,4 +38,5 @@ You're up and running on `ws://localhost:PORT`!
 ### Classes
 
 `Messages`, contains functions regarding the message handling.
+
 `Players`, contains functions regarding the player handling.
