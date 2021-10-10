@@ -26,7 +26,7 @@ You're up and running on `ws://localhost:PORT`!
 * `wss.on('connection')`, Every thing involving a connected client goes in here.
 * `wss.close`, if the WebSocketServer ever closes it's connection. Ain't gonne happen thou :)
 * `ws.close`, if client closes it's connection.
-* `ws.message`, messages from the client. See [Message types](#Message types)
+* `ws.message`, messages from the client. See [Message types](#message-types)
 * `ws.pong`, Heartbeat response from client.
 
 ### Message types
