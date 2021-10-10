@@ -8,10 +8,6 @@ const Message = new ClassMessages();
 const Players = new ClassPlayers();
 const wss = new WebSocketServer({ port: process.env.PORT });
 
-function heartbeat() {
-  this.isAlive = true;
-}
-
 wss.on('connection', (ws, req) => {
   const DateTime = new Date();
 
@@ -69,6 +65,7 @@ wss.on('connection', (ws, req) => {
           data: {
             connected: ws.connected,
             player: ws.player,
+            online: ws.isAlive,
             uuid: ws.uuid,
           },
           type: 'UserInfo',
@@ -166,13 +163,12 @@ wss.on('connection', (ws, req) => {
   /**
    * What to do with a pong.
    */
-  ws.on('pong', heartbeat);
+  ws.on('pong', () => {
+    console.info(`Received a pong.`);
 
-  /**
-   * What to do with a ping.
-   */
-  ws.on('ping', (ws) => {
-    ws.pong();
+    ws.isAlive = true;
+
+    Players.online(ws.uuid, true);
   });
 
   if (Message.all.length > 0) {
@@ -180,23 +176,27 @@ wss.on('connection', (ws, req) => {
   }
 });
 
-// const interval = setInterval(() => {
-//   wss.clients.forEach((ws) => {
-//     if (ws.isAlive === false) {
-//       Players.remove(ws.uuid);
-//       return ws.terminate();
-//     }
-//     ws.isAlive = false;
-//     ws.ping();
-//   });
-// }, 30000);
+const interval = setInterval(() => {
+  console.info(`Ping sent.`);
+
+  wss.clients.forEach((client) => {
+    if (client.isAlive === false) {
+      // client.terminate();
+
+      Players.online(client.uuid, false);
+      // Players.remove(client.uuid);
+    }
+    client.isAlive = false;
+    client.ping();
+  });
+}, 30000);
 
 /**
  * Broadcast Playerlist every 2000 milliseconds.
  */
 setInterval(() => {
-  wss.clients.forEach((ws) => {
-    ws.send(
+  wss.clients.forEach((client) => {
+    client.send(
       JSON.stringify({
         data: Players.list,
         type: 'PlayerList',
