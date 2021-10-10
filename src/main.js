@@ -15,7 +15,7 @@ wss.on('connection', (ws, req) => {
 
   ws.connected = DateTime.toUTCString();
   ws.isAlive = true;
-  ws.myTurn = false;
+  ws.turn = false;
 
   /**
    * Client disconnected.
@@ -67,6 +67,7 @@ wss.on('connection', (ws, req) => {
     if (Message.type === `register`) {
       ws.uuid = Message.data.uuid !== null ? Message.data.uuid : uuid();
       ws.player = Players.add(ws.uuid);
+      ws.turn = Players.whosTurn() === ws.uuid;
 
       /**
        * Send generated UserInformation to client.
@@ -77,9 +78,25 @@ wss.on('connection', (ws, req) => {
             connected: ws.connected,
             player: ws.player,
             online: ws.isAlive,
+            turn: ws.turn,
             uuid: ws.uuid,
           },
           type: 'UserInfo',
+        }),
+      );
+    }
+
+    /**
+     * If the message is a word from the game
+     * But it's not your turn.
+     *
+     * @param {string} Message.type Incoming message type
+     */
+    if (Message.type === `word` && !ws.turn) {
+      ws.send(
+        JSON.stringify({
+          data: { message: `Sorry, it's not your turn.` },
+          type: `NotYourTurn`,
         }),
       );
     }
@@ -89,7 +106,7 @@ wss.on('connection', (ws, req) => {
      *
      * @param {string} Message.type Incoming message type
      */
-    if (Message.type === `word`) {
+    if (Message.type === `word` && ws.turn) {
       let message = {};
       let state = true;
 
@@ -108,6 +125,9 @@ wss.on('connection', (ws, req) => {
             data: { message: Message.data, player: ws.player, turn: `UUID` },
             type: `Word`,
           };
+
+          // Not this clients turn anymore.
+          ws.turn = false;
 
           Message.messages.push({
             message: Message.data,
@@ -129,16 +149,23 @@ wss.on('connection', (ws, req) => {
           type: `Word`,
         };
 
+        // Not this clients turn anymore.
+        ws.turn = false;
+
         Message.messages.push({ message: Message.data, player: ws.player });
       }
 
-      message.data.turn = `uuid`;
+      // Set next client to be its turn.
+      Players.next();
+
+      message.data.turn = Players.whosTurn();
 
       /**
        * Broadcast the result to all clients, except the client who send the word.
        */
       wss.clients.forEach((client) => {
         if (client !== ws && client.readyState === WebSocket.OPEN) {
+          client.turn = client.uuid === Players.whosTurn() ? true : false;
           client.send(JSON.stringify(message));
         }
       });
@@ -168,8 +195,6 @@ wss.on('connection', (ws, req) => {
 
   // What to do with a pong.
   ws.on('pong', () => {
-    console.info(`Received a pong.`);
-
     // Set WebSocket Client Connected to true.
     ws.isAlive = true;
 
@@ -187,16 +212,14 @@ wss.on('connection', (ws, req) => {
   }
 });
 
+// Check the connection to the client.
 const interval = setInterval(() => {
-  console.info(`Ping sent.`);
-
   wss.clients.forEach((client) => {
-    if (client.isAlive === false) {
-      // client.terminate();
-
-      Players.online(client.uuid, false);
-      // Players.remove(client.uuid);
-    }
+    // if (client.isAlive === false) {
+    //   // client.terminate();
+    //   // Players.online(client.uuid, false);
+    //   // Players.remove(client.uuid);
+    // }
     client.isAlive = false;
     client.ping();
   });
@@ -216,20 +239,16 @@ setInterval(() => {
   });
 }, 2000);
 
+// Let's not remove the heartbeat check :)
 // wss.on('close', () => {
 //   clearInterval(interval);
 // });
 
-// setInterval(() => {
-//   wss.clients.forEach((client) => {
-//     client.ping();
-//   });
-// }, 30000);
-
-// setInterval(() => {
-//   console.clear();
-// }, 60000);
-
+/**
+ * Announce the winner, to the winner.
+ *
+ * @param {WebSocket} ws WebSocket API
+ */
 const Winner = (ws) => {
   if (Players.list.length === 1) {
     wss.clients.forEach((client) => {
@@ -244,5 +263,6 @@ const Winner = (ws) => {
     });
     Message.clear();
     Players.clear();
+    ws.close();
   }
 };

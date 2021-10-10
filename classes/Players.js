@@ -32,9 +32,14 @@ class Players {
    * @return {string}
    */
   add(uuid) {
-    return this.CreatePlayer(uuid);
+    const player = this.CreatePlayer(uuid);
+
+    this.whosTurn();
+
+    return player;
   }
 
+  // Clear player list.
   clear() {
     this.players = [];
   }
@@ -56,11 +61,39 @@ class Players {
         this.players[index] = {
           name: `Player ${index + 1}`,
           online: true,
+          turn: false,
           uuid: uuid,
         };
 
         // Return a generated player name.
         return `Player ${index + 1}`;
+      }
+    }
+  }
+
+  // Calculate who's next.
+  next() {
+    let found = true;
+
+    for (let index = 0; index <= this.players.length; index++) {
+      if (this.players[index] === undefined) {
+        continue;
+      }
+
+      if (this.players[index].turn === false && found === false) {
+        this.players[index].turn = true;
+        break;
+      }
+
+      if (this.players[index].turn === true) {
+        this.players[index].turn = false;
+        found = false;
+        continue;
+      }
+
+      if (index === this.players.length - 1) {
+        index = 0;
+        continue;
       }
     }
   }
@@ -104,18 +137,18 @@ class Players {
    *
    * @return {bool}
    */
-  replace(current, replacement) {
-    for (let index = 0; index < this.players.length; index++) {
-      if (
-        this.players[index] !== undefined &&
-        this.players[index].uuid === current
-      ) {
-        this.players[index].uuid = replacement;
-      }
-    }
+  // replace(current, replacement) {
+  //   for (let index = 0; index < this.players.length; index++) {
+  //     if (
+  //       this.players[index] !== undefined &&
+  //       this.players[index].uuid === current
+  //     ) {
+  //       this.players[index].uuid = replacement;
+  //     }
+  //   }
 
-    return true;
-  }
+  //   return true;
+  // }
 
   /**
    * Remove a player, based on UUID.
@@ -135,7 +168,6 @@ class Players {
 
         // To complete remove the slot
         // this.players.splice(index, 1);
-
         // break;
       }
     }
@@ -147,6 +179,38 @@ class Players {
 
     // Return true for good measure :)
     return true;
+  }
+
+  /**
+   * Set who's turn it is.
+   *
+   * @param {string} uuid Players UUID
+   */
+  turn(uuid) {
+    for (let index = 0; index <= this.players.length; index++) {
+      if (
+        this.players[index] !== undefined &&
+        this.players[index].uuid === uuid
+      ) {
+        this.players[index].turn = true;
+      } else if (this.players[index] !== undefined) {
+        this.players[index].turn = false;
+      }
+    }
+  }
+
+  whosTurn() {
+    let player = this.players.find((player) => {
+      return player !== undefined && player.turn === true;
+    });
+
+    if (player === undefined) {
+      player = this.players[0];
+
+      this.turn(player.uuid);
+    }
+
+    return player.uuid;
   }
 }
 
