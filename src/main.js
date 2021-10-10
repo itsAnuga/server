@@ -24,7 +24,7 @@ wss.on('connection', (ws, req) => {
     Players.remove(ws.uuid);
 
     // let DateTime = new Date();
-    // console.info(`${DateTime.toUTCString()} Client disconnected`);
+    console.info(`${DateTime.toUTCString()} Client disconnected`);
   });
 
   /**
@@ -48,6 +48,13 @@ wss.on('connection', (ws, req) => {
       });
 
       ws.terminate();
+
+      /**
+       * Check amount of players and annouce winner if there only is one left.
+       */
+      Winner(ws);
+
+      console.info(`${DateTime.toUTCString()} Client forfeited.`);
     }
 
     /**
@@ -115,7 +122,7 @@ wss.on('connection', (ws, req) => {
         } else {
           // Word is invalid.
           message = {
-            data: { message: `${ws.player} is out of the game :(` },
+            data: { message: `${ws.player} is out!` },
             type: `Loser`,
           };
 
@@ -156,6 +163,11 @@ wss.on('connection', (ws, req) => {
         );
 
         ws.terminate();
+
+        /**
+         * Let the last standing player know it has won!
+         */
+        Winner(ws);
       }
     }
   });
@@ -172,7 +184,7 @@ wss.on('connection', (ws, req) => {
   });
 
   if (Message.all.length > 0) {
-    ws.send(JSON.stringify(Message.all));
+    ws.send(JSON.stringify({ data: Message.all, type: `Words` }));
   }
 });
 
@@ -218,3 +230,20 @@ setInterval(() => {
 // setInterval(() => {
 //   console.clear();
 // }, 60000);
+
+const Winner = (ws) => {
+  if (Players.list.length === 1) {
+    wss.clients.forEach((client) => {
+      if (client !== ws && client.readyState === WebSocket.OPEN) {
+        client.send(
+          JSON.stringify({
+            data: { message: `You won!` },
+            type: `Won`,
+          }),
+        );
+      }
+    });
+    Message.clear();
+    Players.clear();
+  }
+};
