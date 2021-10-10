@@ -51,11 +51,29 @@ class Players {
         // Use first available slot.
         this.players[index] = {
           name: `Player ${index + 1}`,
+          online: true,
           uuid: uuid,
         };
 
         // Return a generated player name.
         return `Player ${index + 1}`;
+      }
+    }
+  }
+
+  /**
+   * Set players online/offline state.
+   *
+   * @param {string} uuid
+   * @param {bool} state
+   */
+  online(uuid, state) {
+    for (let index = 0; index <= this.players.length; index++) {
+      if (
+        this.players[index] !== undefined &&
+        this.players[index].uuid === uuid
+      ) {
+        this.players[index].online = state;
       }
     }
   }
