@@ -35,6 +35,10 @@ class Players {
     return this.CreatePlayer(uuid);
   }
 
+  clear() {
+    this.players = [];
+  }
+
   /**
    * Create a player, based on UUID.
    *

@@ -41,6 +41,10 @@ class Message {
     return ``;
   }
 
+  clear() {
+    this.messages = [];
+  }
+
   /**
    * Check incoming message.
    * (Not used at the moment, but might come in handy)
