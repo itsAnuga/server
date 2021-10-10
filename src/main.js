@@ -37,6 +37,8 @@ wss.on('connection', (ws, req) => {
 
     /**
      * When a client gives up willingly.
+     *
+     * @param {string} Message.type Incoming message type
      */
     if (Message.type === `forfeit`) {
       Players.remove(ws.uuid);
@@ -59,6 +61,8 @@ wss.on('connection', (ws, req) => {
 
     /**
      * Register new client or returning client.
+     *
+     * @param {string} Message.type Incoming message type
      */
     if (Message.type === `register`) {
       ws.uuid = Message.data.uuid !== null ? Message.data.uuid : uuid();
@@ -81,19 +85,9 @@ wss.on('connection', (ws, req) => {
     }
 
     /**
-     * Returning client.
-     * Set clients UUID.
-     */
-    // if (Message.type === `uuid`) {
-    //   Players.replace(ws.uuid, Message.data);
-    //   ws.uuid = Message.data;
-    //   // if (Message.all.length !== 0) {
-    //   //   Players.observer(ws.uuid);
-    //   // }
-    // }
-
-    /**
      * If the message is a word from the game.
+     *
+     * @param {string} Message.type Incoming message type
      */
     if (Message.type === `word`) {
       let message = {};
@@ -172,17 +166,22 @@ wss.on('connection', (ws, req) => {
     }
   });
 
-  /**
-   * What to do with a pong.
-   */
+  // What to do with a pong.
   ws.on('pong', () => {
     console.info(`Received a pong.`);
 
+    // Set WebSocket Client Connected to true.
     ws.isAlive = true;
 
+    // Set Player to connected.
     Players.online(ws.uuid, true);
   });
 
+  /**
+   * Broadcast current message/word list.
+   *
+   * @param {string} Message.all Retrieve all messages
+   */
   if (Message.all.length > 0) {
     ws.send(JSON.stringify({ data: Message.all, type: `Words` }));
   }
