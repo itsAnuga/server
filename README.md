@@ -1,4 +1,6 @@
-# Requirements
+# The Server - The Game
+
+## Requirements
 
 - OS: Linux, macOS, Windows
 - node.js >= 14.x
