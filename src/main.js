@@ -12,10 +12,6 @@ function heartbeat() {
   this.isAlive = true;
 }
 
-wss.on('close', () => {
-  clearInterval(interval);
-});
-
 wss.on('connection', (ws, req) => {
   const DateTime = new Date();
 
@@ -48,12 +44,14 @@ wss.on('connection', (ws, req) => {
      */
     if (Message.type === `forfeit`) {
       Players.remove(ws.uuid);
-      ws.terminate();
+
       wss.clients.forEach((client) => {
         if (client !== ws && client.readyState === WebSocket.OPEN) {
           client.send({ data: { message: `${ws.player} forfeited.` } });
         }
       });
+
+      ws.terminate();
     }
 
     /**
@@ -94,7 +92,7 @@ wss.on('connection', (ws, req) => {
      * If the message is a word from the game.
      */
     if (Message.type === `word`) {
-      let message = null;
+      let message = {};
       let state = true;
 
       /**
@@ -108,37 +106,42 @@ wss.on('connection', (ws, req) => {
          */
         if (word.valid) {
           // Word is valid.
-          message = JSON.stringify({
-            data: { message: Message.data, player: ws.player },
+          message = {
+            data: { message: Message.data, player: ws.player, turn: `UUID` },
             type: `Word`,
-          });
+          };
 
-          Message.messages.push({ message: Message.data, player: ws.player });
+          Message.messages.push({
+            message: Message.data,
+            player: ws.player,
+          });
         } else {
           // Word is invalid.
-          message = JSON.stringify({
+          message = {
             data: { message: `${ws.player} is out of the game :(` },
             type: `Loser`,
-          });
+          };
 
           state = false;
         }
       } else {
         // It's the first word in the session.
-        message = JSON.stringify({
+        message = {
           data: { message: Message.data, player: ws.player },
           type: `Word`,
-        });
+        };
 
         Message.messages.push({ message: Message.data, player: ws.player });
       }
+
+      message.data.turn = `uuid`;
 
       /**
        * Broadcast the result to all clients, except the client who send the word.
        */
       wss.clients.forEach((client) => {
         if (client !== ws && client.readyState === WebSocket.OPEN) {
-          client.send(message);
+          client.send(JSON.stringify(message));
         }
       });
 
@@ -161,9 +164,16 @@ wss.on('connection', (ws, req) => {
   });
 
   /**
-   * What to do on pong.
+   * What to do with a pong.
    */
   ws.on('pong', heartbeat);
+
+  /**
+   * What to do with a ping.
+   */
+  ws.on('ping', (ws) => {
+    ws.pong();
+  });
 
   if (Message.all.length > 0) {
     ws.send(JSON.stringify(Message.all));
@@ -194,6 +204,10 @@ setInterval(() => {
     );
   });
 }, 2000);
+
+// wss.on('close', () => {
+//   clearInterval(interval);
+// });
 
 // setInterval(() => {
 //   wss.clients.forEach((client) => {
